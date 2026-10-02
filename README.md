@@ -5,37 +5,62 @@
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Transformers-4.0%2B-FFD21E.svg?style=for-the-badge)](https://huggingface.co/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-> **CineScope Recommendation Enhancement**: Fine-tuning transformer-based architectures for high-accuracy binary sentiment classification on large-scale movie reviews.
+> **CineScope Recommendation Enhancement**: A transformer-based binary sentiment classifier for movie reviews, built from scratch in PyTorch.
 
 ---
 
-## 📌 Executive Summary
+## 📌 Overview
 
-**SentimentScope** is an end-to-end NLP framework designed to process qualitative text data and accurately predict sentiment polarity. Built as a core component for the **CineScope** recommendation engine, this system leverages pre-trained Transformer backbones fine-tuned on 50,000 movie reviews from the IMDB dataset (`aclImdb_v1.tar.gz`) to deliver real-time sentiment scoring.
+**SentimentScope** is a sentiment analysis project built for the fictional **CineScope** recommendation engine. It classifies IMDB movie reviews as positive or negative using a GPT-style transformer that is adapted for classification and trained from scratch in PyTorch. Text is tokenized with the pretrained `bert-base-uncased` tokenizer from Hugging Face.
 
-### 🌟 Key Highlights & Engineering Achievements
+The model reaches **75.51% accuracy on the 25,000-review IMDB test set**, meeting the project target of >75%.
 
-* **Production-Ready Architecture**: Clean separation between data ingestion, custom PyTorch model definitions, training loops, and evaluation scripts.
-* **Transformer Fine-Tuning**: Modified sequence classification logic integrated on top of Transformer encoders with customizable dropout and pooling layers.
-* **Interactive Web Application**: Local Streamlit dashboard allowing users to input raw text reviews and receive instant sentiment probability scores.
-* **Comprehensive Metrics**: Automated computation of accuracy, precision, recall, F1-score, and confusion matrices.
+### Highlights
+
+* **Custom transformer**: Attention heads, multi-head attention, feed-forward layers and transformer blocks implemented in PyTorch.
+* **Classification adaptation**: Mean pooling over token embeddings plus a linear head with two outputs.
+* **Custom data pipeline**: A PyTorch `Dataset` and `DataLoader` with subword tokenization, truncation and padding.
+* **Exploratory analysis**: Class balance, review-length distributions and sample reviews.
 
 ---
 
-## 🏗️ System Architecture & Data Pipeline
+## 🏗️ Architecture & Pipeline
 
 ```text
 ┌────────────────────────────┐     ┌────────────────────────────┐     ┌────────────────────────────┐
-│ Raw Text Movie Review      │ ──► │ PyTorch Dataset & Loader   │ ──► │ Transformer Encoder        │
-│ (50,000 IMDB Samples)      │     │ (Tokenization & Padding)   │     │ (Pre-trained Backbone)     │
+│ Raw IMDB Review Text       │ ──► │ BERT Tokenizer             │ ──► │ Token + Position           │
+│ (25k train / 25k test)     │     │ (max length 128, padded)   │     │ Embeddings                 │
 └────────────────────────────┘     └────────────────────────────┘     └────────────────────────────┘
                                                                                      │
                                                                                      ▼
 ┌────────────────────────────┐     ┌────────────────────────────┐     ┌────────────────────────────┐
-│ Sentiment Inference        │ ◄── │ Binary Classification Head │ ◄── │ Sequence Representations   │
-│ (Positive / Negative)      │     │ (Pooling, Dropout, Linear) │     │ (Hidden States)            │
+│ Prediction                 │ ◄── │ Mean Pooling + Linear Head │ ◄── │ 4 Transformer Blocks       │
+│ (Positive / Negative)      │     │ (128 → 2 logits)           │     │ + Final LayerNorm          │
 └────────────────────────────┘     └────────────────────────────┘     └────────────────────────────┘
 ```
+
+### Model Configuration
+
+| Parameter            | Value                          |
+|----------------------|--------------------------------|
+| Vocabulary size      | 30,522 (`bert-base-uncased`)   |
+| Embedding dimension  | 128                            |
+| Transformer layers   | 4                              |
+| Attention heads      | 4 (head size 32)               |
+| Context length       | 128 tokens                     |
+| Dropout              | 0.1                            |
+| Classes              | 2                              |
+
+### Training Setup
+
+| Setting        | Value                  |
+|----------------|------------------------|
+| Optimizer      | AdamW, learning rate 3e-4 |
+| Loss           | Cross-entropy          |
+| Batch size     | 32                     |
+| Epochs         | 3                      |
+| Train / val split | 22,500 / 2,500 (90/10, shuffled, seed 42) |
+| Test set       | 25,000 (official IMDB test split) |
 
 ---
 
@@ -43,26 +68,14 @@
 
 ```text
 SentimentScope/
-├── data/
-│   ├── raw/                 # Download location for raw dataset tarballs
-│   └── processed/           # Processed train/validation/test splits
-├── docs/
-│   └── figures/             # Confusion matrices & loss curves
-├── notebooks/
-│   └── SentimentScope.ipynb # Exploratory analysis & initial experiments
-├── src/
-│   ├── __init__.py
-│   ├── dataset.py           # Custom PyTorch Dataset & DataLoader utilities
-│   ├── model.py             # Transformer architecture and classification head
-│   ├── train.py             # Optimized training loop with AdamW & LR scheduler
-│   ├── evaluate.py          # Model evaluation & performance visualization
-│   └── utils.py             # Tokenization helpers & seed initialization
-├── app.py                   # Interactive Streamlit web application
-├── requirements.txt         # Python environment dependencies
-├── .gitignore               # Excluded cache and checkpoint files
-├── LICENSE                  # Open-source license
-└── README.md                # Project documentation
+├── SentimentScope.ipynb     # Full pipeline: data, model, training, evaluation
+├── requirements.txt         # Python dependencies
+├── .gitignore
+├── LICENSE
+└── README.md
 ```
+
+The IMDB dataset (`aclImdb/`) is not included in the repository. See setup below.
 
 ---
 
@@ -70,14 +83,14 @@ SentimentScope/
 
 ### Prerequisites
 
-* **Python**: v3.10 or higher
-* **Hardware**: CUDA-enabled GPU (recommended for training)
+* **Python**: 3.10 or higher
+* **Hardware**: CUDA-enabled GPU recommended for training (the notebook falls back to CPU, but it will be slow)
 
 ### 1. Environment Setup
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/SentimentScope.git
+git clone https://github.com/franz-ob/SentimentScope.git
 cd SentimentScope
 
 # Create and activate virtual environment
@@ -90,48 +103,51 @@ pip install -r requirements.txt
 
 ### 2. Dataset Setup
 
-Download and unpack the benchmark IMDB dataset:
+Download and unpack the IMDB dataset in the project root:
 
 ```bash
 wget https://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz
-tar -xzf aclImdb_v1.tar.gz -C data/raw/
+tar -xzf aclImdb_v1.tar.gz
 ```
+
+This creates an `aclImdb/` folder with `train/` and `test/` subfolders, which the notebook reads from.
+
+### 3. Run the Notebook
+
+```bash
+jupyter notebook SentimentScope.ipynb
+```
+
+Run the cells in order. The notebook covers:
+
+1. Loading and exploring the dataset
+2. Building the `IMDBDataset` class and `DataLoader`s
+3. Defining the transformer model
+4. Training for 3 epochs with validation after each epoch
+5. Evaluating on the test set
 
 ---
 
-## 🚀 Execution & Usage
+## 📊 Results
 
-### Model Training
+| Stage                         | Accuracy |
+|-------------------------------|----------|
+| Validation, before training   | 49.92%   |
+| Validation, after epoch 2     | 74.08%   |
+| Validation, after epoch 3     | 76.16%   |
+| **Test set (25,000 reviews)** | **75.51%** |
 
-Execute the fine-tuning pipeline via CLI with custom parameters:
-
-```bash
-python src/train.py --epochs 5 --batch_size 16 --lr 2e-5
-```
-
-### Model Evaluation
-
-Evaluate model performance against out-of-sample test data:
-
-```bash
-python src/evaluate.py --model_path checkpoints/best_model.pt
-```
-
-
-```
+The project target was >75% test accuracy, which the model meets. Validation and test accuracy are close, which suggests the model is not overfitting at this scale.
 
 ---
 
-## 📊 Experimental Results & Benchmarks
+## ⚠️ Limitations & Future Work
 
-The model was evaluated on out-of-sample test reviews from the IMDB dataset, meeting and exceeding all business-level accuracy targets for the CineScope platform:
-
-| Metric    | Training Set | Validation / Test Set | Target Benchmark | Status |
-|-----------|--------------|-----------------------|------------------|--------|
-| Accuracy  | 92.4%        | >75.51%%                | >75.0%           | 🎯 Met |
-| F1-Score  | 0.92         | 0.84                  | —                | 🎯 Met |
-| Precision | 0.91         | 0.83                  | —                | 🎯 Met |
-| Recall    | 0.93         | 0.85                  | —                | 🎯 Met |
+* **Undertrained**: Training loss was still decreasing at epoch 3. More epochs, a larger embedding size or more layers should improve accuracy.
+* **Truncation**: Reviews are cut to 128 tokens, while the average review is about 234 words, so information in longer reviews is lost.
+* **Attention mask**: The blocks keep the causal (left-to-right) mask from the original generative architecture. Bidirectional attention is more standard for classification and may help.
+* **No pretrained weights**: The model learns language from scratch. Fine-tuning a pretrained encoder such as BERT would likely score considerably higher.
+* **Metrics**: Only accuracy is reported. Precision, recall, F1 and a confusion matrix could be added.
 
 ---
 
